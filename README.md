@@ -11,5 +11,5 @@ As an example:
 
 For more infomation
 ``` shell
-> ./pdb_check.py -h`
+> ./pdb_check.py -h
 ```
