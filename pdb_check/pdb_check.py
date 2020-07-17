@@ -1,11 +1,12 @@
 #!/usr/bin/env python2.7
 """ Read and Parse PDB files 
 
-Author: Hongjun Bai  (hongjun.bai@gmail.com)
+Author: Hongjun Bai  (bbhhjj@gmail.com)
 
 Last modified: 06/03/2014, by HB
 Fixed all known problems before 06/03/2014
 
+TODO: update to python3
 """    
 
 import sys
