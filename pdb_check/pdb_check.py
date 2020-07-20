@@ -148,6 +148,8 @@ else:
 if sys.version_info < (3,):
     range = xrange
 
+AllowedHetRes = set('MSE NAG MAN BMA'.split())
+
 class Protein:
     """  Parse PDB file and provide a basic framework to work with protein structure.
 
@@ -204,8 +206,8 @@ class Protein:
         myseq = []
         for res in self.residues:
             if ((chains is None or res.chain_id in chains)):
-                if res.name in AA1to3:
-                    myseq.append(res.name)
+                if res.name in AA3to1:
+                    myseq.append(AA3to1[res.name])
                 else:
                     myseq.append('X')
         return ''.join(myseq)
@@ -267,7 +269,7 @@ class Protein:
             for line in pdblines:
                 # Atom record of protein (including MSE, which may start with HETATOM)
                 if ((line.startswith('ATOM') or  # atom line
-                     (line.startswith('HETATM') and line.startswith('MSE', 17))) and  # MSE
+                    (line.startswith('HETATM') and line[17:20] in AllowedHetRes)) and  # MSE or Glycans
                     (atom_name is None or line[12:16].strip() == atom_name) and  # atom name
                     (chains is None or line[21] in chains)):  # chain or chains
                     pdbatoms.append(parse_atom(line))
@@ -296,13 +298,13 @@ class Protein:
                 if res.chain_id != ch0:  # Chain TER
                     last_res = self.residues[i-1]
                     last_atom = last_res.atoms[-1]
-                    body.append('%-6s%5d      %3s%2s%4d\n' %('TER', last_atom.serial+1, AA1to3[last_res.name], last_res.chain_id, last_res.id))
+                    body.append('%-6s%5d      %3s%2s%4d\n' %('TER', last_atom.serial+1, last_res.name, last_res.chain_id, last_res.id))
                     ch0 = res.chain_id
                 body.append(str(res))
             # TER of last chain
             last_res = self.residues[-1]
             last_atom = last_res.atoms[-1]
-            body.append('%-6s%5d      %3s%2s%4d\n' %('TER', last_atom.serial+1, AA1to3[last_res.name], last_res.chain_id, last_res.id))
+            body.append('%-6s%5d      %3s%2s%4d\n' %('TER', last_atom.serial+1, last_res.name, last_res.chain_id, last_res.id))
             body = ''.join(record for record in body)
         else:
             body = "REMARK No residues found!\n"
@@ -331,7 +333,7 @@ class Residue:
             sys.stderr.write("Empty pdbatom list used for residue initialization")
             sys.exit()
         else:
-            self.name = AA3to1[atom0.resname]
+            self.name = atom0.resname
             self.chain_id = atom0.chain_id
             self.id = atom0.resid
             self.icode = atom0.icode
@@ -362,7 +364,7 @@ class Atom:
         name_format = ' %-3s'
         if len(self.name) > 3: name_format  = '%4s'
         atom_format = '%-6s%5d '+name_format+'%1s%3s%2s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n'
-        return atom_format %(self.type, self.serial, self.name, self.altloc, AA1to3[res.name],
+        return atom_format %(self.type, self.serial, self.name, self.altloc, res.name,
                 res.chain_id, res.id, res.icode, self.coor[0], self.coor[1], self.coor[2],
                 self.occupancy, self.bf, res.seg, self.element, self.charge)
                 
@@ -472,10 +474,10 @@ def clean_hydrogen(protein, loudly=False):
 def clean_missing_ca(protein, loudly=False):
     if loudly:
         for res in protein.residues:
-            if 'CA' not in res.atom:
+            if 'CA' not in res.atom and res.name in AA3to1:
                 print("Residue %s:%s%c %3d has no CA atom, deleted." 
                         %(res.chain_id, res.name, res.icode, res.id))
-    protein.residues = filter(lambda res: 'CA' in res.atom, protein.residues)
+    protein.residues = filter(lambda res: 'CA' in res.atom or res.name in AllowedHetRes, protein.residues)
     if protein.residues:
         protein.residue = dict((res.uniq_id(), res) for res in protein.residues)
 
@@ -528,7 +530,7 @@ def check_stru(prot, logfile=None):
     for res in insList:
         log.write("Inserted residue: %s:%s %3d%s\n" %(res.chain_id, res.name, res.id, res.icode))
     # 5, unknown residues
-    unknownList = [res for res in prot.residues if res.name not in AA1to3]
+    unknownList = [res for res in prot.residues if res.name not in AA3to1]
     if unknownList: log.write("Unknow residue(s) detected:")
     for res in unknownList:
         log.write("Unknown residue: %s:%s %3d\n" %(res.chain_id, res.name, res.id))
@@ -584,6 +586,7 @@ def main():
         print('>[%s:%s] %4d' %(para.inputPDB.name[:-4], ch, len(current_seq)))
         print(current_seq)
     if para.output:
+        #prot.resort()
         prot.fwrite(para.output)
     ## Test memory Usage    
     #from pympler.asizeof import asizeof
