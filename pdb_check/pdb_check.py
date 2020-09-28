@@ -361,8 +361,12 @@ class Atom:
         
     def __str__(self):
         res = self.parent
-        name_format = ' %-3s'
-        if len(self.name) > 3: name_format  = '%4s'
+        if self.name[0] in '0123456789':
+            name_format = '%-4s'
+        elif len(self.name) > 3:
+            name_format  = '%4s'
+        else:
+            name_format = ' %-3s'
         atom_format = '%-6s%5d '+name_format+'%1s%3s%2s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n'
         return atom_format %(self.type, self.serial, self.name, self.altloc, res.name,
                 res.chain_id, res.id, res.icode, self.coor[0], self.coor[1], self.coor[2],
